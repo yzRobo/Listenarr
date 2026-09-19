@@ -45,7 +45,9 @@ namespace Listenarr.Api.Middleware
                 var configuredKey = cfg?.ApiKey;
                 if (!string.IsNullOrWhiteSpace(configuredKey))
                 {
-                    // Accept header X-Api-Key or Authorization: ApiKey <key>
+                    // Accept header X-Api-Key, Authorization: ApiKey <key>, or Authorization: Bearer <key>.
+                    // The SignalR JavaScript client (used by the bundled Discord bot) sends the
+                    // accessTokenFactory value as a Bearer token on the hub negotiate request.
                     string? provided = null;
                     if (context.Request.Headers.TryGetValue("X-Api-Key", out var h))
                         provided = h.ToString();
@@ -55,6 +57,8 @@ namespace Listenarr.Api.Middleware
                         var s = auth.ToString();
                         if (s.StartsWith("ApiKey ", StringComparison.OrdinalIgnoreCase))
                             provided = s.Substring("ApiKey ".Length).Trim();
+                        else if (s.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                            provided = s.Substring("Bearer ".Length).Trim();
                     }
 
                     // If headers didn't supply the key, only accept query-string token for realtime hub connections.
