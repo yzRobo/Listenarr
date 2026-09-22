@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using Microsoft.Win32.SafeHandles;
 
 namespace Listenarr.Infrastructure.FileSystem;
@@ -94,9 +95,7 @@ internal sealed partial class PinnedDirectoryCreation
             destination.ThrowIfDisposed();
             if (!OperatingSystem.IsWindows())
             {
-                File.SetUnixFileMode(
-                    destination._fileHandle,
-                    File.GetUnixFileMode(_fileHandle));
+                TryPreserveUnixFileMode(destination);
 
                 // UnixFileMode is the authoritative permission contract on Unix.
                 // FileAttributes.ReadOnly reflects the current caller's effective
@@ -132,12 +131,31 @@ internal sealed partial class PinnedDirectoryCreation
                 return;
             }
 
-            File.SetUnixFileMode(
-                destination._fileHandle,
-                File.GetUnixFileMode(_fileHandle));
+            TryPreserveUnixFileMode(destination);
             File.SetLastWriteTimeUtc(
                 destination._fileHandle,
                 GetLastWriteTimeUtc());
+        }
+
+        // Copying the mode bits is best effort. Some filesystems refuse chmod even
+        // for the file owner (for example ZFS datasets with NFSv4 ACLs and
+        // aclmode=restricted, the TrueNAS default for SMB shares) and return EPERM.
+        // The destination file is already written and readable, so a refused chmod
+        // must not fail the import.
+        [UnsupportedOSPlatform("windows")]
+        private void TryPreserveUnixFileMode(PinnedFileEntry destination)
+        {
+            try
+            {
+                File.SetUnixFileMode(
+                    destination._fileHandle,
+                    File.GetUnixFileMode(_fileHandle));
+            }
+            catch (Exception exception) when (
+                exception is UnauthorizedAccessException or IOException)
+            {
+                // Mode preservation is cosmetic; timestamps are still applied by the caller.
+            }
         }
 
         private void PreserveMarkerlessMetadataWindows(
