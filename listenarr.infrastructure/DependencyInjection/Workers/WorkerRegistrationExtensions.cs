@@ -57,6 +57,11 @@ internal static class WorkerRegistrationExtensions
             DownloadProcessingJobCleanupService>(services);
 
         AddHostedProcessor<UnmatchedScanProcessor, IUnmatchedScanProcessor, UnmatchedScanBackgroundService>(services);
+
+        // Bring the Discord bot back up after restarts when the integration is enabled.
+        services.AddSingleton<DiscordBotAutoStartService>();
+        services.AddHostedService(provider =>
+            provider.GetRequiredService<DiscordBotAutoStartService>());
         return services;
     }
 

@@ -41,7 +41,8 @@ namespace Listenarr.Tests.Features.Infrastructure.DependencyInjection
             nameof(MetadataRescanService),
             nameof(DownloadProcessingJobProcessor),
             nameof(DownloadProcessingJobCleanupService),
-            nameof(UnmatchedScanBackgroundService)
+            nameof(UnmatchedScanBackgroundService),
+            nameof(DiscordBotAutoStartService)
         ];
 
         private static readonly Type[] ExpectedProcessorTypes =
